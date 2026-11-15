@@ -493,7 +493,7 @@
             .from('app_state')
             .upsert({
               id: 'toko_tulus_utama',
-              data: stateToSave,
+              data: state,
               updated_at: new Date().toISOString()
             })
             .then(({ error }) => {
