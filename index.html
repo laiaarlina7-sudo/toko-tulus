@@ -1769,7 +1769,7 @@
       `;
     }
 
-    function handleProductImageUpload(event) {
+       function handleProductImageUpload(event) {
       const file = event.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
@@ -1791,23 +1791,47 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          tempUploadedProductImage = canvas.toDataURL('image/jpeg', 0.82);
 
+          // Tampilkan pratinjau langsung di layar
+          const localPreview = canvas.toDataURL('image/jpeg', 0.82);
+          tempUploadedProductImage = localPreview;
           const previewEl = document.getElementById('pf-image-preview');
           const emptyEl = document.getElementById('pf-image-empty');
           const removeBtn = document.getElementById('pf-image-remove');
           if (previewEl) {
-            previewEl.src = tempUploadedProductImage;
+            previewEl.src = localPreview;
             previewEl.classList.remove('hidden');
           }
           if (emptyEl) emptyEl.classList.add('hidden');
           if (removeBtn) removeBtn.classList.remove('hidden');
-          showToast('Foto siap disimpan! Klik tombol Simpan');
+
+          // Unggah otomatis ke Supabase Storage agar tersimpan permanen
+          if (supabaseClient) {
+            canvas.toBlob(async function(blob) {
+              if (!blob) return;
+              const fileName = 'produk_' + Date.now() + '.jpg';
+              const { error } = await supabaseClient.storage
+                .from('produk-images')
+                .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+              if (!error) {
+                const { data: pubData } = supabaseClient.storage
+                  .from('produk-images')
+                  .getPublicUrl(fileName);
+                if (pubData && pubData.publicUrl) {
+                  tempUploadedProductImage = pubData.publicUrl;
+                }
+              } else {
+                console.error('Gagal unggah foto ke Supabase:', error.message);
+              }
+            }, 'image/jpeg', 0.82);
+          }
         };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     }
+
 
     function clearTempProductImage() {
       tempUploadedProductImage = '';
